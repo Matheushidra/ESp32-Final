@@ -30,4 +30,5 @@ app.add_routes(routes)
 app.router.add_static('/static/', path='public', name='static')
 
 if __name__ == '__main__':
-    web.run_app(app, port=10000)
+    web.run_app(app, port=int(os.environ.get('PORT', 10000)))
+
