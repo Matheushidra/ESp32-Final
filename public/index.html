@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Controle ESP32</title>
+</head>
+<body>
+  <h1>Controle Remoto ESP32</h1>
+  <button onclick="enviar('ligar')">Ligar</button>
+  <button onclick="enviar('desligar')">Desligar</button>
+
+  <script>
+    function enviar(comando) {
+      fetch('/api/comando', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comando })
+      });
+    }
+  </script>
+</body>
+</html>
