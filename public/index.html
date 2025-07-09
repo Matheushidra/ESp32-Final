@@ -1,21 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Controle ESP32</title>
+    <meta charset="UTF-8">
+    <title>Controle ESP32</title>
 </head>
 <body>
-  <h1>Controle Remoto ESP32</h1>
-  <button onclick="enviar('ligar')">Ligar</button>
-  <button onclick="enviar('desligar')">Desligar</button>
+    <h1>Controle Remoto ESP32</h1>
+    <button onclick="enviar('ligar')">Ligar</button>
+    <button onclick="enviar('desligar')">Desligar</button>
 
-  <script>
-    function enviar(comando) {
-      fetch('/api/comando', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comando })
-      });
-    }
-  </script>
+    <script>
+        const ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+        ws.onopen = () => {
+            console.log("WebSocket conectado");
+        };
+
+        ws.onerror = (error) => {
+            console.error("Erro no WebSocket:", error);
+        };
+
+        ws.onmessage = (event) => {
+            console.log("Resposta do servidor:", event.data);
+        };
+
+        function enviar(comando) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(comando);
+                console.log("Comando enviado:", comando);
+            } else {
+                console.warn("WebSocket não está conectado.");
+            }
+        }
+    </script>
 </body>
 </html>
