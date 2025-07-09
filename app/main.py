@@ -1,31 +1,33 @@
+import asyncio
 from aiohttp import web
-import json
-import pathlib
+import os
 
-# Diretório base do projeto
-BASE_DIR = pathlib.Path(__file__).parent.parent
+routes = web.RouteTableDef()
 
-# Variável global que guarda o último comando
-comando_atual = None
+@routes.get('/')
+async def index(request):
+    return web.FileResponse(path='public/index.html')
 
-# Rota POST que recebe o comando do botão
-async def receber_comando(request):
-    global comando_atual
-    dados = await request.json()
-    comando_atual = dados.get('comando')
-    return web.Response(text="Comando recebido")
+@routes.get('/ws')
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
 
-# Rota GET que o ESP32 consulta para saber o comando atual
-async def status(request):
-    return web.json_response({"comando": comando_atual})
+    async for msg in ws:
+        if msg.type == web.WSMsgType.TEXT:
+            print(f"Mensagem recebida: {msg.data}")
+            await ws.send_str(f"Comando recebido: {msg.data}")
+        elif msg.type == web.WSMsgType.ERROR:
+            print(f"Erro na conexão WebSocket: {ws.exception()}")
 
-# Cria o aplicativo e define as rotas
+    print("WebSocket fechado")
+    return ws
+
 app = web.Application()
-app.router.add_post('/api/comando', receber_comando)
-app.router.add_get('/api/status', status)
+app.add_routes(routes)
 
-# Corrige o caminho da pasta 'public' para funcionar na Render
-app.router.add_static('/', path=str(BASE_DIR / 'public'), name='static')
+# Definindo o diretório público para arquivos estáticos (JS, CSS, etc)
+app.router.add_static('/static/', path='public', name='static')
 
-# Inicia o servidor
-web.run_app(app, host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    web.run_app(app, port=10000)
