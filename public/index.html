@@ -1,28 +1,32 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Controle Remoto ESP32</title>
-  </head>
-  <body>
-    <h1>Controle Remoto ESP32</h1>
-    <button onclick="enviar('ligar')">Ligar</button>
-    <button onclick="enviar('desligar')">Desligar</button>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle ESP32</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    button { font-size: 18px; padding: 10px 20px; margin: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Controle do ESP32</h1>
+  <button onclick="enviarComando('ligar')">Ligar</button>
+  <button onclick="enviarComando('desligar')">Desligar</button>
 
-    <script>
-      const ws = new WebSocket("ws://" + window.location.host + "/ws");
+  <script>
+    const ws = new WebSocket("wss://" + window.location.host + "/ws");
 
-      ws.onopen = () => console.log("Conectado ao WebSocket");
-      ws.onmessage = (event) => console.log("Resposta do servidor:", event.data);
+    ws.onopen = () => console.log("Conectado ao servidor WebSocket");
+    ws.onmessage = (event) => console.log("Resposta:", event.data);
 
-      function enviar(cmd) {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(cmd);
-          console.log("Comando enviado:", cmd);
-        } else {
-          console.log("WebSocket não está conectado");
-        }
+    function enviarComando(cmd) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(cmd);
+        console.log("Comando enviado:", cmd);
+      } else {
+        alert("Conexão WebSocket não está aberta.");
       }
-    </script>
-  </body>
+    }
+  </script>
+</body>
 </html>
