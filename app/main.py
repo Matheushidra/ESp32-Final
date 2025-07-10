@@ -1,12 +1,9 @@
-import os
-import json
+import asyncio
 from aiohttp import web
 
-# IP fixo (ou variável de ambiente) do seu ESP32 na rede local
-ESP32_IP = os.environ.get("ESP32_IP", "192.168.1.50")
+connected_clients = {}
 
 routes = web.RouteTableDef()
-clientes = []  # lista de dicts {'ws': WebSocketResponse, 'tipo': 'site'|'esp32', 'ip': '...'}
 
 @routes.get('/')
 async def index(request):
@@ -17,58 +14,34 @@ async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    client_ip = request.remote
-    # identifica se é ESP32 ou site
-    tipo = 'esp32' if client_ip == ESP32_IP else 'site'
-    clientes.append({'ws': ws, 'tipo': tipo, 'ip': client_ip})
-    print(f"[+] {client_ip} conectado como {tipo}")
+    esp_id = None
 
-    try:
-        async for msg in ws:
-            if msg.type == web.WSMsgType.TEXT:
-                text = msg.data.strip()
-                cmd = None
+    async for msg in ws:
+        if msg.type == web.WSMsgType.TEXT:
+            text = msg.data.strip()
+            print(f"Mensagem recebida: {text}")
 
-                # tenta JSON
-                try:
-                    j = json.loads(text)
-                    # se veio identidade, só marca e continua
-                    if 'identidade' in j:
-                        for c in clientes:
-                            if c['ws'] is ws:
-                                c['tipo'] = j['identidade']
-                                print(f"    -> reclassificado como {j['identidade']}")
-                        continue
-                    # se veio { "comando": "ligar" }
-                    if 'comando' in j:
-                        cmd = j['comando']
-                except json.JSONDecodeError:
-                    # se não for JSON, trata text puro
-                    cmd = text
+            if text == "esp32":
+                esp_id = "esp32"
+                connected_clients[esp_id] = ws
+                print("ESP32 registrado com sucesso")
+                await ws.send_str("Servidor reconheceu ESP32")
 
-                if cmd and tipo == 'site':
-                    print(f"[cmd] do site → {cmd}")
-                    # envia só para ESP32
-                    for c in clientes:
-                        if c['tipo'] == 'esp32' and not c['ws'].closed:
-                            await c['ws'].send_str(cmd)
+            elif text in ["ligar", "desligar"] and "esp32" in connected_clients:
+                await connected_clients["esp32"].send_str(text)
 
-            elif msg.type == web.WSMsgType.ERROR:
-                print(f"[!] WebSocket error ({client_ip}): {ws.exception()}")
+        elif msg.type == web.WSMsgType.ERROR:
+            print(f"Erro na conexão WebSocket: {ws.exception()}")
 
-    finally:
-        # remove ao desconectar
-        clientes[:] = [c for c in clientes if c['ws'] is not ws]
-        print(f"[-] {client_ip} desconectou")
+    if esp_id and esp_id in connected_clients:
+        del connected_clients[esp_id]
+        print(f"ESP32 desconectado")
 
     return ws
 
 app = web.Application()
 app.add_routes(routes)
-# serve tudo de public/ como /
-app.router.add_static('/', path='public', name='static')
+app.router.add_static('/static/', path='public', name='static')
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    print(f"▶️ Iniciando em 0.0.0.0:{port}, ESP32_IP={ESP32_IP}")
-    web.run_app(app, port=port)
+    web.run_app(app, port=10000)
