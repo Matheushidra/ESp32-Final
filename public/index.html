@@ -1,32 +1,40 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Controle ESP32</title>
-</head>
-<body>
-  <h1>Controle Remoto ESP32</h1>
-  <button onclick="enviar('ligar')">Ligar</button>
-  <button onclick="enviar('desligar')">Desligar</button>
+import asyncio
+from aiohttp import web
+import aiohttp
 
-  <script>
-    const ws = new WebSocket("wss://" + window.location.host + "/ws");
+clients = {}
 
-    ws.onopen = () => {
-      console.log("🔌 WebSocket conectado");
-      // identifica este cliente como ‘site’
-      ws.send(JSON.stringify({ identidade: "site" }));
-    };
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
 
-    ws.onerror = (e) => console.error("⚠️ WebSocket erro:", e);
-    ws.onmessage = (e) => console.log("👾 Servidor disse:", e.data);
+    peername = request.transport.get_extra_info('peername')
+    ip = peername[0]
 
-    function enviar(cmd) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(cmd);               // texto puro
-        console.log("📤 Enviado:", cmd);
-      } else console.warn("WebSocket não aberto");
-    }
-  </script>
-</body>
-</html>
+    try:
+        async for msg in ws:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                if msg.data == "esp32":
+                    clients[ip] = ws
+                    await ws.send_str("ESP32 registrado com IP " + ip)
+                else:
+                    for client_ip, client_ws in clients.items():
+                        if not client_ws.closed:
+                            await client_ws.send_str(msg.data)
+    except:
+        pass
+    finally:
+        if ip in clients:
+            del clients[ip]
+        await ws.close()
+
+    return ws
+
+async def index(request):
+    return web.FileResponse('index.html')
+
+app = web.Application()
+app.router.add_get('/', index)
+app.router.add_get('/ws', websocket_handler)
+
+web.run_app(app, port=8080)
