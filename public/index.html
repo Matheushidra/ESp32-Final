@@ -12,17 +12,20 @@
   <script>
     const ws = new WebSocket("wss://" + window.location.host + "/ws");
 
-    ws.onopen = () => console.log("WebSocket conectado");
-    ws.onerror = e => console.error("Erro WebSocket:", e);
-    ws.onmessage = e => console.log("Resposta do servidor:", e.data);
+    ws.onopen = () => {
+      console.log("🔌 WebSocket conectado");
+      // identifica este cliente como ‘site’
+      ws.send(JSON.stringify({ identidade: "site" }));
+    };
+
+    ws.onerror = (e) => console.error("⚠️ WebSocket erro:", e);
+    ws.onmessage = (e) => console.log("👾 Servidor disse:", e.data);
 
     function enviar(cmd) {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(cmd);
-        console.log("Enviado:", cmd);
-      } else {
-        console.warn("WebSocket não conectado");
-      }
+        ws.send(cmd);               // texto puro
+        console.log("📤 Enviado:", cmd);
+      } else console.warn("WebSocket não aberto");
     }
   </script>
 </body>
