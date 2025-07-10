@@ -14,6 +14,7 @@
 
         ws.onopen = () => {
             console.log("WebSocket conectado");
+            ws.send(JSON.stringify({ identidade: "site" }));
         };
 
         ws.onerror = (error) => {
@@ -21,12 +22,12 @@
         };
 
         ws.onmessage = (event) => {
-            console.log("Resposta do servidor:", event.data);
+            console.log("Servidor respondeu:", event.data);
         };
 
         function enviar(comando) {
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(comando);
+                ws.send(JSON.stringify({ origem: "site", comando: comando }));
                 console.log("Comando enviado:", comando);
             } else {
                 console.warn("WebSocket não está conectado.");
