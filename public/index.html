@@ -1,40 +1,28 @@
-import asyncio
-from aiohttp import web
-import aiohttp
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Controle Remoto ESP32</title>
+  </head>
+  <body>
+    <h1>Controle Remoto ESP32</h1>
+    <button onclick="enviar('ligar')">Ligar</button>
+    <button onclick="enviar('desligar')">Desligar</button>
 
-clients = {}
+    <script>
+      const ws = new WebSocket("ws://" + window.location.host + "/ws");
 
-async def websocket_handler(request):
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)
+      ws.onopen = () => console.log("Conectado ao WebSocket");
+      ws.onmessage = (event) => console.log("Resposta do servidor:", event.data);
 
-    peername = request.transport.get_extra_info('peername')
-    ip = peername[0]
-
-    try:
-        async for msg in ws:
-            if msg.type == aiohttp.WSMsgType.TEXT:
-                if msg.data == "esp32":
-                    clients[ip] = ws
-                    await ws.send_str("ESP32 registrado com IP " + ip)
-                else:
-                    for client_ip, client_ws in clients.items():
-                        if not client_ws.closed:
-                            await client_ws.send_str(msg.data)
-    except:
-        pass
-    finally:
-        if ip in clients:
-            del clients[ip]
-        await ws.close()
-
-    return ws
-
-async def index(request):
-    return web.FileResponse('index.html')
-
-app = web.Application()
-app.router.add_get('/', index)
-app.router.add_get('/ws', websocket_handler)
-
-web.run_app(app, port=8080)
+      function enviar(cmd) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(cmd);
+          console.log("Comando enviado:", cmd);
+        } else {
+          console.log("WebSocket não está conectado");
+        }
+      }
+    </script>
+  </body>
+</html>
